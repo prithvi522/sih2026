@@ -1,0 +1,62 @@
+.background-container {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  background: #101722;
+  pointer-events: none;
+}
+
+.background-image,
+.background-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 54%;
+}
+
+.background-image {
+  z-index: 0;
+  opacity: 1;
+  transition: opacity 500ms ease;
+}
+
+.background-video {
+  z-index: 1;
+  opacity: 1;
+  transition: opacity 500ms ease;
+}
+
+.background-video--hidden {
+  opacity: 0;
+}
+
+.background-readability {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(7, 13, 22, .48), rgba(7, 13, 22, .24) 38%, rgba(7, 13, 22, .45)), linear-gradient(90deg, rgba(7, 13, 22, .3), transparent 66%);
+}
+
+.website-content {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+}
+
+@media (max-width: 700px) {
+  .background-image,
+  .background-video {
+    object-position: 54% center;
+  }
+
+  .background-readability {
+    background: linear-gradient(180deg, rgba(7, 13, 22, .56), rgba(7, 13, 22, .3) 42%, rgba(7, 13, 22, .55)), linear-gradient(90deg, rgba(7, 13, 22, .28), rgba(7, 13, 22, .12));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .background-video { transition-duration: 150ms; }
+}
