@@ -3,7 +3,7 @@ import "./IntroLoader.css";
 
 const INTRO_DURATION_MS = 6000;
 const INTRO_FAILSAFE_MS = 7000;
-const CROSSFADE_MS = 500;
+const CROSSFADE_MS = 1100;
 
 type BackgroundPhase = "intro" | "crossfade" | "static";
 
@@ -70,13 +70,13 @@ function IntroLoader() {
 
   return (
     <div className="background-container" aria-hidden="true">
-      <img className="background-image" src="/intro-final-frame.jpg" alt="" fetchPriority="high" />
+      <img className="background-image" src="/intro-final-frame.png" alt="" fetchPriority="high" />
       {phase !== "static" && (
         <video
           ref={videoRef}
           className={`background-video${phase === "crossfade" ? " background-video--hidden" : ""}`}
           src="/intro-video.mp4"
-          poster="/intro-final-frame.jpg"
+          poster="/intro-final-frame.png"
           autoPlay
           muted
           playsInline

@@ -20,13 +20,13 @@
 .background-image {
   z-index: 0;
   opacity: 1;
-  transition: opacity 500ms ease;
+  transition: opacity 1100ms cubic-bezier(.22, .61, .36, 1);
 }
 
 .background-video {
   z-index: 1;
   opacity: 1;
-  transition: opacity 500ms ease;
+  transition: opacity 1100ms cubic-bezier(.22, .61, .36, 1);
 }
 
 .background-video--hidden {
