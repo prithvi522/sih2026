@@ -7,6 +7,7 @@ const navigation = [
   { label: "Site plan", to: "/site" },
   { label: "Proposals", to: "/proposals" },
   { label: "Analysis", to: "/analysis" },
+  { label: "Video plan", to: "/walkthrough" },
 ];
 
 export default function Layout() {

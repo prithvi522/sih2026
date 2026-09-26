@@ -10,15 +10,37 @@ type BackgroundPhase = "intro" | "crossfade" | "static";
 function IntroLoader() {
   const [phase, setPhase] = useState<BackgroundPhase>("intro");
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationFrame = useRef<number | undefined>(undefined);
   const durationTimer = useRef<number | undefined>(undefined);
   const fadeTimer = useRef<number | undefined>(undefined);
   const failSafeTimer = useRef<number | undefined>(undefined);
   const transitioning = useRef(false);
 
+  const drawVideoFrame = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+
+    if (video && canvas && context && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      // Copy nearby floor pixels over the embedded lower-right mark before display.
+      context.drawImage(canvas, 1055, 568, 70, 80, 1113, 568, 70, 80);
+    }
+
+    animationFrame.current = window.requestAnimationFrame(drawVideoFrame);
+  }, []);
+
   const showImageFallback = useCallback(() => {
     window.clearTimeout(durationTimer.current);
     window.clearTimeout(fadeTimer.current);
     window.clearTimeout(failSafeTimer.current);
+    window.cancelAnimationFrame(animationFrame.current ?? 0);
     transitioning.current = true;
     setPhase("static");
   }, []);
@@ -27,6 +49,7 @@ function IntroLoader() {
     window.clearTimeout(durationTimer.current);
     window.clearTimeout(fadeTimer.current);
     window.clearTimeout(failSafeTimer.current);
+    window.cancelAnimationFrame(animationFrame.current ?? 0);
     setPhase("static");
   }, []);
 
@@ -63,6 +86,7 @@ function IntroLoader() {
 
   useEffect(() => () => {
     videoRef.current?.pause();
+    window.cancelAnimationFrame(animationFrame.current ?? 0);
     window.clearTimeout(durationTimer.current);
     window.clearTimeout(fadeTimer.current);
     window.clearTimeout(failSafeTimer.current);
@@ -88,6 +112,9 @@ function IntroLoader() {
           onCanPlay={() => console.info("UrbanForma video can play")}
           onPlaying={() => {
             console.info("UrbanForma background video PLAYING");
+            if (!animationFrame.current) {
+              animationFrame.current = window.requestAnimationFrame(drawVideoFrame);
+            }
             if (!durationTimer.current) {
               durationTimer.current = window.setTimeout(beginCrossfade, INTRO_DURATION_MS);
             }
@@ -100,6 +127,12 @@ function IntroLoader() {
             console.error("UrbanForma background video error:", event.currentTarget.error);
             showImageFallback();
           }}
+        />
+      )}
+      {phase !== "static" && (
+        <canvas
+          ref={canvasRef}
+          className={`background-video-canvas${phase === "crossfade" ? " background-video--hidden" : ""}`}
         />
       )}
       <div className="background-readability" />

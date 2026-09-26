@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Site from "./pages/Site";
 import Proposals from "./pages/Proposals";
 import Analysis from "./pages/Analysis";
+import Walkthrough from "./pages/Walkthrough";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
             <Route path="/site" element={<Site />} />
             <Route path="/proposals" element={<Proposals />} />
             <Route path="/analysis" element={<Analysis />} />
+            <Route path="/walkthrough" element={<Walkthrough />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

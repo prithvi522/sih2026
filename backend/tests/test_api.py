@@ -99,3 +99,54 @@ def test_project_update_and_delete(client):
     assert client.put(f"/api/projects/{project_id}", json={"name": "After"}).json()["name"] == "After"
     assert client.delete(f"/api/projects/{project_id}").status_code == 204
     assert client.get(f"/api/projects/{project_id}").status_code == 404
+
+
+def test_walkthrough_plan_is_seeded_once_with_30_second_timing(client, project_id):
+    path = f"/api/projects/{project_id}/walkthrough-plan"
+    first = client.get(path)
+    second = client.get(path)
+    assert first.status_code == second.status_code == 200
+    assert first.json()["id"] == second.json()["id"]
+    scenes = first.json()["scenes"]
+    assert len(scenes) == 5
+    assert sum(scene["duration_seconds"] for scene in scenes) == 30
+    assert [(scene["start_seconds"], scene["end_seconds"]) for scene in scenes] == [(0, 5), (5, 12), (12, 19), (19, 25), (25, 30)]
+    assert len(first.json()["checklist"]) == 11
+
+
+def test_walkthrough_edits_reorder_checklist_and_reset(client, project_id):
+    path = f"/api/projects/{project_id}/walkthrough-plan"
+    plan = client.get(path).json()
+    scenes = []
+    for scene in plan["scenes"]:
+        scenes.append({key: scene[key] for key in ("scene_key", "order_index", "title", "duration_seconds", "objective", "recording_instructions", "camera_movement", "status", "notes", "reference_url")})
+    scenes[0]["duration_seconds"] = 8
+    scenes[0]["status"] = "edited"
+    scenes[1]["order_index"] = 0
+    scenes[0]["order_index"] = 1
+    scenes[1]["title"] = "Reordered city layout"
+    checklist = [{"task_key": task["task_key"], "is_complete": task["is_complete"]} for task in plan["checklist"]]
+    checklist[0]["is_complete"] = True
+    response = client.put(path, json={"status": "recording", "scenes": scenes, "checklist": checklist})
+    assert response.status_code == 200, response.text
+    edited = response.json()
+    assert edited["scenes"][0]["title"] == "Reordered city layout"
+    assert edited["scenes"][0]["start_seconds"] == 0
+    assert edited["scenes"][1]["start_seconds"] == 7
+    assert edited["checklist"][0]["is_complete"] is True
+    assert edited["status"] == "recording"
+    assert client.post(f"{path}/reset").status_code == 200
+    reset = client.get(path).json()
+    assert sum(scene["duration_seconds"] for scene in reset["scenes"]) == 30
+    assert all(scene["status"] == "not_started" for scene in reset["scenes"])
+    assert not any(task["is_complete"] for task in reset["checklist"])
+
+
+def test_walkthrough_rejects_invalid_scenes_and_unknown_project(client, project_id):
+    path = f"/api/projects/{project_id}/walkthrough-plan"
+    plan = client.get(path).json()
+    scenes = [{key: scene[key] for key in ("scene_key", "order_index", "title", "duration_seconds", "objective", "recording_instructions", "camera_movement", "status", "notes", "reference_url")} for scene in plan["scenes"]]
+    scenes[0]["duration_seconds"] = 0
+    payload = {"status": "not_started", "scenes": scenes, "checklist": [{"task_key": task["task_key"], "is_complete": task["is_complete"]} for task in plan["checklist"]]}
+    assert client.put(path, json=payload).status_code == 422
+    assert client.get("/api/projects/missing/walkthrough-plan").status_code == 404

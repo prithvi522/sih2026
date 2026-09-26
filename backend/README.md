@@ -1,6 +1,6 @@
 # UrbanForma API
 
-FastAPI service for persistent SIH 2026 problem 26114 project, proposal, and manually recorded Autodesk Forma analysis data. It does not create site designs or run Forma/Revit analysis.
+FastAPI service for persistent SIH 2026 problem 26114 project, proposal, manually recorded Autodesk Forma analysis, and walkthrough video planning data. It does not create site designs, render videos, or run Forma/Revit analysis.
 
 ## Stack and layout
 
@@ -12,9 +12,10 @@ FastAPI service for persistent SIH 2026 problem 26114 project, proposal, and man
 backend/
   app/main.py                 FastAPI application and CORS
   app/core/                   Environment settings and SQLAlchemy sessions
-  app/models/project.py       Project, proposal, and analysis tables
+  app/models/project.py       Project, proposal, analysis, and video-plan tables
   app/schemas/                Pydantic request/response validation
   app/routers/                REST endpoints
+  app/services/               Default walkthrough plan templates
   alembic/                    Versioned schema migration
   tests/                      API tests with isolated SQLite fixtures
   requirements.txt
@@ -90,6 +91,8 @@ All routes use the `/api` prefix. Project lists accept `limit` (1–100) and `of
 | POST, GET | `/api/proposals/{proposal_id}/analyses` | Create or list analysis results |
 | PUT, DELETE | `/api/analyses/{analysis_id}` | Update or delete one analysis result |
 | GET | `/api/projects/{project_id}/comparison` | Compare saved Proposal A and B |
+| GET, PUT | `/api/projects/{project_id}/walkthrough-plan` | Read or save five editable scenes, checklist, and video status |
+| POST | `/api/projects/{project_id}/walkthrough-plan/reset` | Reset the video plan scenes and checklist to defaults |
 
 Example project and proposal requests:
 
@@ -127,6 +130,8 @@ The comparison response contains `proposal_a`, `proposal_b`, and `comparable_dif
 - Analysis values are stored as source-entered strings to support numeric and descriptive results. Numeric values are also stored in `NUMERIC` form for compatible comparisons. Units, source, scope, period, status, notes, and analysis date are persisted separately.
 - Invalid Forma Board URL input is rejected as a URL; a report reference remains plain text.
 - Project deletion cascades to its proposals and analysis records. Do not downgrade the initial migration on a database containing data: its downgrade removes these tables.
+- Walkthrough plans are created with the five required scenes and eleven checklist items on first read. One plan is allowed per project; edits and checklist state are saved with the plan endpoint. Scene start/end times are derived from saved order and durations. The API permits a non-30-second plan so the frontend can show a duration warning.
+- Migration `0002_walkthrough_video_plan` adds separate video-plan, scene, and checklist tables; existing project/proposal/analysis tables and records are retained.
 
 ## Tests
 
@@ -145,5 +150,5 @@ Configuration is read from environment variables or `backend\.env`: `DATABASE_UR
 ## Current integration limits
 
 - The frontend saves project proposals and analysis records through this API. Analysis results are manually entered or imported from this app's JSON export; JSON import is validated before writes. Comparison CSV and project JSON exports are available.
-- The API does not call Autodesk endpoints, ingest native Forma/Revit files, run simulations, synchronize BIM models, or host rendered assets. Forma Board URLs are saved references and open in a separate tab only.
+- The API does not call Autodesk endpoints, ingest native Forma/Revit files, render/export video, run simulations, synchronize BIM models, or host image/video assets. Walkthrough image references are optional URLs only. Forma Board URLs are saved references and open in a separate tab only.
 - The project's actual site, proposals, analyses, Revit model, renders, and walkthrough must be produced and verified by the team in the relevant tools, following SIH rules.

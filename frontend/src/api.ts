@@ -61,6 +61,19 @@ export interface ComparisonRecord {
   project_id: string; proposal_a: ProposalRecord; proposal_b: ProposalRecord;
   comparable_differences: { category: string; proposal_a: string; proposal_b: string; difference_a_minus_b: string; unit: string | null }[];
 }
+export type WalkthroughStatus = "not_started" | "recording" | "editing" | "review" | "completed";
+export type SceneStatus = "not_started" | "recorded" | "edited";
+export interface WalkthroughScene {
+  id: string; scene_key: string; order_index: number; title: string; duration_seconds: number;
+  start_seconds: number; end_seconds: number; objective: string; recording_instructions: string;
+  camera_movement: string; status: SceneStatus; notes: string | null; reference_url: string | null; updated_at: string;
+}
+export interface WalkthroughSceneInput extends Omit<WalkthroughScene, "id" | "start_seconds" | "end_seconds" | "updated_at"> {}
+export interface WalkthroughChecklistItem { id: string; task_key: string; order_index: number; label: string; is_complete: boolean }
+export interface WalkthroughPlan {
+  id: string; project_id: string; status: WalkthroughStatus; scenes: WalkthroughScene[];
+  checklist: WalkthroughChecklistItem[]; created_at: string; updated_at: string;
+}
 
 export const api = {
   projects: () => request<ProjectRecord[]>("/api/projects?limit=100", {}, true),
@@ -74,6 +87,9 @@ export const api = {
   updateAnalysis: (id: string, input: Omit<AnalysisInput, "category">) => request<AnalysisRecord>(`/api/analyses/${id}`, { method: "PUT", body: JSON.stringify(input) }),
   deleteAnalysis: (id: string) => request<void>(`/api/analyses/${id}`, { method: "DELETE" }),
   comparison: (projectId: string) => request<ComparisonRecord>(`/api/projects/${projectId}/comparison`, {}, true),
+  walkthroughPlan: (projectId: string) => request<WalkthroughPlan>(`/api/projects/${projectId}/walkthrough-plan`, {}, true),
+  updateWalkthroughPlan: (projectId: string, input: { status: WalkthroughStatus; scenes: WalkthroughSceneInput[]; checklist: { task_key: string; is_complete: boolean }[] }) => request<WalkthroughPlan>(`/api/projects/${projectId}/walkthrough-plan`, { method: "PUT", body: JSON.stringify(input) }),
+  resetWalkthroughPlan: (projectId: string) => request<WalkthroughPlan>(`/api/projects/${projectId}/walkthrough-plan/reset`, { method: "POST", body: "{}" }),
 };
 
 let projectRequest: Promise<ProjectRecord> | null = null;

@@ -26,6 +26,7 @@ class Project(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now())
 
     proposals: Mapped[list["Proposal"]] = relationship(back_populates="project", cascade="all, delete-orphan", passive_deletes=True)
+    video_plan: Mapped["VideoPlan | None"] = relationship(back_populates="project", cascade="all, delete-orphan", passive_deletes=True, uselist=False)
 
     __table_args__ = (CheckConstraint("site_area_km2 IS NULL OR site_area_km2 >= 1", name="ck_project_area_min_1km2"), Index("ix_projects_created_at", "created_at"))
 
@@ -86,3 +87,62 @@ class Analysis(Base):
         CheckConstraint("status IN ('not_analyzed', 'analyzed', 'imported')", name="ck_analysis_status"),
         Index("ix_analyses_category", "category"),
     )
+
+
+class VideoPlan(Base):
+    __tablename__ = "video_plans"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="not_started")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now())
+
+    project: Mapped[Project] = relationship(back_populates="video_plan")
+    scenes: Mapped[list["VideoScene"]] = relationship(back_populates="plan", cascade="all, delete-orphan", passive_deletes=True, order_by="VideoScene.order_index")
+    checklist: Mapped[list["VideoChecklistItem"]] = relationship(back_populates="plan", cascade="all, delete-orphan", passive_deletes=True, order_by="VideoChecklistItem.order_index")
+
+    __table_args__ = (CheckConstraint("status IN ('not_started', 'recording', 'editing', 'review', 'completed')", name="ck_video_plan_status"),)
+
+
+class VideoScene(Base):
+    __tablename__ = "video_scenes"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    plan_id: Mapped[str] = mapped_column(ForeignKey("video_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    scene_key: Mapped[str] = mapped_column(String(40), nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    objective: Mapped[str] = mapped_column(Text, nullable=False)
+    recording_instructions: Mapped[str] = mapped_column(Text, nullable=False)
+    camera_movement: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="not_started")
+    notes: Mapped[str | None] = mapped_column(Text)
+    reference_url: Mapped[str | None] = mapped_column(String(2000))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now())
+
+    plan: Mapped[VideoPlan] = relationship(back_populates="scenes")
+
+    __table_args__ = (
+        UniqueConstraint("plan_id", "scene_key", name="uq_video_scene_key"),
+        UniqueConstraint("plan_id", "order_index", name="uq_video_scene_order"),
+        CheckConstraint("duration_seconds > 0", name="ck_video_scene_duration_positive"),
+        CheckConstraint("status IN ('not_started', 'recorded', 'edited')", name="ck_video_scene_status"),
+    )
+
+
+class VideoChecklistItem(Base):
+    __tablename__ = "video_checklist_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    plan_id: Mapped[str] = mapped_column(ForeignKey("video_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    task_key: Mapped[str] = mapped_column(String(50), nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    label: Mapped[str] = mapped_column(String(300), nullable=False)
+    is_complete: Mapped[bool] = mapped_column(default=False, nullable=False)
+
+    plan: Mapped[VideoPlan] = relationship(back_populates="checklist")
+
+    __table_args__ = (UniqueConstraint("plan_id", "task_key", name="uq_video_checklist_key"),)
